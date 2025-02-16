@@ -73,7 +73,7 @@ def run_conversation(user_prompt):
             function_to_call = available_functions[function_name]
             function_args = json.loads(tool_call.function.arguments)
             function_response = function_to_call(
-                team_name=function_args.get("team_name")
+                **function_args
             )
             messages.append(
                 {
