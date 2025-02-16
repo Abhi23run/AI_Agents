@@ -9,6 +9,24 @@ load_dotenv()
 client = Groq(api_key = os.getenv('GROQ_API_KEY'))
 MODEL = 'llama3-70b-8192'
 
+def get_company_details(company_name):
+    """Fetch company details from LinkedIn API"""
+    url = "https://linkedin-data-api.p.rapidapi.com/get-company-details"
+    headers = {
+        "x-rapidapi-key": os.getenv('x-rapidapi-key'),
+        "x-rapidapi-host": "linkedin-data-api.p.rapidapi.com"
+    }
+    querystring = {"username": company_name}
+
+    response = requests.get(url, headers=headers, params=querystring)
+
+    if response.status_code == 200:
+        response_json = response.json()
+        return json.dumps(response_json.get("data", {}))  # Return only "data" field
+    else:
+        return json.dumps({"error": "API request failed", "status_code": response.status_code})
+
+
 def get_game_score(team_name):
     """Get the current score for a given NBA game by querying the Flask API."""
     url = f'http://127.0.0.1:5000/score?team={team_name}'
@@ -23,7 +41,8 @@ def run_conversation(user_prompt):
     messages=[
         {
             "role": "system",
-            "content": "You are a function calling LLM that uses the data extracted from the get_game_score function to answer questions around NBA game scores. Include the team and their opponent in your response."
+            "content": "You are a function calling LLM that understands the incoming user question and calls the relevant functions depending on the question. \
+            Make sure to use the Linkedin API when asked about any company."
         },
         {
             "role": "user",
@@ -47,13 +66,30 @@ def run_conversation(user_prompt):
                     "required": ["team_name"],
                 },
             },
+        },
+        {
+        "type": "function",
+        "function": {
+            "name": "get_company_details",
+            "description": "Fetch company details from LinkedIn API using the company username.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "company_name": {
+                        "type": "string",
+                        "description": "The LinkedIn username of the company (e.g. 'Vanguard')."
+                    }
+                },
+                "required": ["company_name"],
+            },
+        }
         }
     ]
     response = client.chat.completions.create(
         model=MODEL,
         messages=messages,
         tools=tools,
-        tool_choice="auto",  
+        tool_choice="required",  
         max_tokens=4096
     )
 
@@ -64,7 +100,7 @@ def run_conversation(user_prompt):
         # Step 3: call the function
         # Note: the JSON response may not always be valid; be sure to handle errors
         available_functions = {
-            "get_game_score": get_game_score,
+            "get_game_score": get_game_score, "get_company_details" : get_company_details
         }  # only one function in this example, but you can have multiple
         messages.append(response_message)  # extend conversation with assistant's reply
         # Step 4: send the info for each function call and function response to the model
