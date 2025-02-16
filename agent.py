@@ -89,5 +89,5 @@ def run_conversation(user_prompt):
         )  # get a new response from the model where it can see the function response
         return second_response.choices[0].message.content
 
-user_prompt = "What was the score of the Nuggets game and also the warriors game?"
-print(run_conversation(user_prompt))
+# user_prompt = "What was the score of the Nuggets game and also the warriors game?"
+# print(run_conversation(user_prompt))
